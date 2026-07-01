@@ -11,10 +11,16 @@ The PRD fixes only the observable contract (FR4: exactly one of two concurrent c
 
 The brainstorm's non-negotiable: **not** a naive read-then-check, which has an interleave window and is exactly the bug the P0 test is designed to catch. Mechanism choice is deferred to `bmad-architecture` / the first story, but Option A is the lower-risk default given the constraint is expressible at the data layer.
 
-## Losing-planner UX (story detail)
+## Losing-planner UX (resolved with PO, 2026-07-01)
 
-FR5 says the loser gets a clear, deterministic rejection identifying the clash. Concrete shape (HTTP 409 vs a domain error, message copy, whether a UI renders it) is a story-level decision tied to Open Question #2 and the surface decision (Open Question #3).
+FR5 is now decided at two layers: the API returns **HTTP 409** identifying the clash; the UI renders a plain-language message ("Sorry, Sam's already booked for those dates"). Exact copy is finalized in the build. Story-level detail: how the message surfaces (inline on the form vs a toast/banner) and whether the form clears or preserves the attempted dates.
+
+## Testing concurrency through the UI (test-design note)
+
+The PO confirmed acceptance tests drive the **UI**, including the P0 concurrency case. Playwright approach: open **two browser contexts**, fill both booking forms, and fire the two submits as close to simultaneously as possible (e.g. `Promise.all` on the two actions) to exercise the race. Assert exactly one booking persists, the winner sees success, the loser sees the "already booked" message.
+
+Note the guarantee still lives at the **data layer** (FR4) — the UI test proves the behaviour end to end but two near-simultaneous clicks are not perfectly simultaneous; the atomic constraint/lock is what actually makes "exactly one wins" true. A thin service/DB-level check may complement the UI test to pin the race deterministically.
 
 ## Stack note
 
-React / Node are *indicative* per the constitution, not confirmed; KPMG may push for Python and/or the full Azure DevOps suite over GitHub. The scaffold is pulled into existence by the first story (PRD-first, not scaffold-first), so the stack choice stays deferrable until a story demands it.
+React / Node are *indicative* per the constitution, not confirmed; KPMG may push for Python and/or the full Azure DevOps suite over GitHub. With a UI now in scope, the first story's scaffold will include a front end as well as a Node service + database — but the scaffold is still pulled into existence by the story (PRD-first, not scaffold-first), so the stack choice stays deferrable until a story demands it.
