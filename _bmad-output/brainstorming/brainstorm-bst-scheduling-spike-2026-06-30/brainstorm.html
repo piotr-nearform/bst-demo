@@ -1,0 +1,572 @@
+<title>Double-Booking Guard — Brainstorm Keepsake</title>
+<meta name="description" content="A brainstorming session that chose the smallest app slice to prove out AI-assisted ways of working for the KPMG x Nearform BST spike.">
+<style>
+  :root {
+    --ground: #0f1419;
+    --ground-2: #141b24;
+    --paper: #f4f6f8;
+    --ink: #1a2230;
+    --ink-soft: #44505f;
+    --ink-faint: #7c8896;
+    --teal: #2d6a6a;
+    --teal-deep: #1f4f4f;
+    --teal-wash: #e3edec;
+    --clash: #c84b31;
+    --clash-wash: #f7e6e1;
+    --lane: #e2e8ec;
+    --lane-line: #d2dbe1;
+    --gold: #b07c2f;
+    --serif: Iowan Old Style, "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  .wrap { max-width: 820px; margin: 0 auto; padding: 0 24px; }
+
+  /* ---------- shared type ---------- */
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin: 0 0 14px;
+  }
+  h2 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(28px, 4.2vw, 40px);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+    margin: 0 0 10px;
+  }
+  .lede {
+    font-size: 18px;
+    color: var(--ink-soft);
+    max-width: 60ch;
+    margin: 0 0 8px;
+  }
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 2px;
+    background: var(--teal-wash);
+    color: var(--teal-deep);
+    border: 1px solid #cfe0de;
+  }
+  .by {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+  }
+  .by.user { color: var(--gold); }
+
+  /* ---------- HERO ---------- */
+  header.hero {
+    background: var(--ground);
+    color: #e8edf2;
+    position: relative;
+    overflow: hidden;
+    border-bottom: 3px solid var(--teal);
+  }
+  /* the time-grid backdrop */
+  header.hero .grid-bg {
+    position: absolute; inset: 0;
+    background-image:
+      repeating-linear-gradient(90deg, transparent 0, transparent 79px, rgba(255,255,255,0.045) 79px, rgba(255,255,255,0.045) 80px),
+      repeating-linear-gradient(0deg, transparent 0, transparent 39px, rgba(255,255,255,0.03) 39px, rgba(255,255,255,0.03) 40px);
+    mask-image: linear-gradient(to bottom, rgba(0,0,0,0.9), rgba(0,0,0,0.15));
+    pointer-events: none;
+  }
+  header.hero .wrap { position: relative; padding-top: 64px; padding-bottom: 56px; }
+  .hero .kicker {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: #6fb3ad;
+    margin: 0 0 22px;
+    display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center;
+  }
+  .hero .kicker .dot { width: 6px; height: 6px; background: var(--clash); border-radius: 50%; display: inline-block; }
+  .hero h1 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: clamp(34px, 6.5vw, 60px);
+    line-height: 1.04;
+    letter-spacing: -0.02em;
+    margin: 0 0 22px;
+    text-wrap: balance;
+  }
+  .hero h1 em { font-style: italic; color: #7fc6bf; }
+  .hero .goal {
+    font-size: 19px;
+    color: #b8c4cf;
+    max-width: 58ch;
+    margin: 0 0 30px;
+    border-left: 2px solid var(--teal);
+    padding-left: 18px;
+  }
+  .meta-row {
+    display: flex; flex-wrap: wrap; gap: 0;
+    border-top: 1px solid rgba(255,255,255,0.12);
+    border-bottom: 1px solid rgba(255,255,255,0.12);
+  }
+  .meta-row .cell {
+    flex: 1 1 140px;
+    padding: 14px 0;
+    border-right: 1px solid rgba(255,255,255,0.12);
+    padding-right: 18px;
+  }
+  .meta-row .cell:last-child { border-right: 0; }
+  .meta-row .k { font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: #6b7884; margin-bottom: 5px; }
+  .meta-row .v { font-size: 15px; color: #dfe6ec; font-variant-numeric: tabular-nums; }
+
+  /* mini double-booking diagram in hero */
+  .booking-demo {
+    margin-top: 34px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 4px;
+    padding: 18px 18px 20px;
+  }
+  .booking-demo .caption { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #6b7884; margin-bottom: 14px; }
+  .lane-row { display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .lane-row .who { font-family: var(--mono); font-size: 12px; color: #aab6c1; text-align: right; }
+  .lane-track { position: relative; height: 30px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+  .lane-track .col { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,0.06); }
+  .blk { position: absolute; top: 4px; bottom: 4px; border-radius: 3px; font-family: var(--mono); font-size: 10px; color: #06201f; display: flex; align-items: center; padding: 0 8px; letter-spacing: 0.04em; }
+  .blk.ok { background: #6fb3ad; }
+  .blk.clash { background: var(--clash); color: #fff; box-shadow: 0 0 0 2px rgba(200,75,49,0.4); }
+  .clash-note { font-family: var(--mono); font-size: 11px; color: var(--clash); margin-top: 12px; display: flex; align-items: center; gap: 8px; }
+  .clash-note .x { font-weight: 700; }
+
+  /* ---------- section scaffolding ---------- */
+  main { padding-bottom: 40px; }
+  section { padding: 64px 0; border-bottom: 1px solid var(--lane-line); }
+  .seq {
+    display: flex; align-items: baseline; gap: 14px; margin-bottom: 26px;
+  }
+  .seq .num {
+    font-family: var(--mono); font-size: 13px; font-weight: 600;
+    color: #fff; background: var(--teal); border-radius: 3px;
+    padding: 4px 9px; letter-spacing: 0.05em;
+  }
+  .seq .label { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-faint); }
+
+  ul.clean { list-style: none; padding: 0; margin: 0; }
+
+  /* ---------- (1) Job to Be Done — two customers ---------- */
+  .jtbd-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 28px 0 8px; }
+  .cust {
+    background: #fff; border: 1px solid var(--lane-line); border-radius: 5px;
+    padding: 22px; position: relative;
+  }
+  .cust .role { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 6px; }
+  .cust h3 { font-family: var(--serif); font-size: 21px; font-weight: 600; margin: 0 0 12px; line-height: 1.2; }
+  .cust .job { font-size: 15.5px; color: var(--ink-soft); }
+  .cust.primary { border-color: var(--teal); border-top: 4px solid var(--teal); }
+  .cust.real { border-color: var(--gold); border-top: 4px solid var(--gold); background: #fffdf8; }
+  .cust .badge { position:absolute; top:16px; right:16px; font-family:var(--mono); font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:#fff; background:var(--gold); padding:2px 7px; border-radius:2px; }
+
+  .insight-stack { margin-top: 26px; display: grid; gap: 1px; background: var(--lane-line); border: 1px solid var(--lane-line); border-radius: 5px; overflow: hidden; }
+  .insight-stack .row { background: #fff; padding: 18px 20px; display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; align-items: start; }
+  .insight-stack .row p { margin: 0; }
+  .insight-stack .row .meta { white-space: nowrap; }
+
+  .pushback {
+    margin-top: 26px;
+    border-left: 3px solid var(--clash);
+    background: var(--clash-wash);
+    padding: 18px 22px;
+    border-radius: 0 5px 5px 0;
+  }
+  .pushback .h { font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--clash); margin: 0 0 8px; }
+  .pushback p { margin: 0 0 10px; }
+  .pushback p:last-child { margin-bottom: 0; }
+
+  /* ---------- (2) Role playing — dialogue thread ---------- */
+  .thread { margin: 28px 0 8px; position: relative; }
+  .thread::before { content:""; position:absolute; left: 19px; top: 12px; bottom: 12px; width: 2px; background: var(--lane-line); }
+  .turn { display: grid; grid-template-columns: 40px 1fr; gap: 16px; margin-bottom: 18px; position: relative; }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-weight: 700; font-size: 13px; color: #fff;
+    z-index: 1; flex-shrink: 0;
+  }
+  .turn .bubble { background:#fff; border:1px solid var(--lane-line); border-radius: 4px 12px 12px 12px; padding: 14px 18px; }
+  .turn .name { font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 6px; }
+  .turn .bubble p { margin: 0; }
+  .av-kpmg { background: var(--clash); }
+  .av-po { background: var(--teal); }
+  .av-eng { background: #3d5a80; }
+  .av-lead { background: var(--gold); }
+  .turn.kpmg .bubble { border-color: #e8c4ba; }
+
+  /* ---------- (3) One feature only — crossed out ---------- */
+  .feature-list { margin: 28px 0 8px; display: grid; gap: 8px; }
+  .feat {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 18px; border-radius: 4px; border: 1px dashed var(--lane-line);
+    color: var(--ink-faint); background: #fbfcfd;
+  }
+  .feat .mark { font-family: var(--mono); font-size: 13px; width: 20px; text-align:center; flex-shrink: 0; }
+  .feat .name { text-decoration: line-through; text-decoration-color: var(--ink-faint); }
+  .feat.chosen {
+    border: 1px solid var(--teal); border-left: 5px solid var(--teal);
+    background: #fff; color: var(--ink);
+    box-shadow: 0 6px 20px -10px rgba(45,106,106,0.5);
+    padding: 22px 20px;
+  }
+  .feat.chosen .mark { color: var(--teal); font-size: 16px; }
+  .feat.chosen .name { text-decoration: none; font-weight: 600; font-size: 19px; font-family: var(--serif); }
+  .feat.chosen .why { display:block; font-family: var(--sans); font-weight: 400; font-size: 15px; color: var(--ink-soft); margin-top: 6px; }
+  .scope-note { margin-top: 24px; font-size: 15px; color: var(--ink-soft); display:flex; gap:12px; align-items:flex-start; }
+  .scope-note .pill { flex-shrink:0; }
+
+  /* ---------- (4) Backcasting — reversed chain ---------- */
+  .backcast { margin: 28px 0 8px; }
+  .bc-head { display:flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 18px; }
+  .step { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: stretch; }
+  .step .rail { display:flex; flex-direction: column; align-items: center; }
+  .step .node { width: 14px; height: 14px; border-radius: 50%; background: var(--teal); border: 3px solid var(--paper); box-shadow: 0 0 0 1px var(--teal); margin-top: 4px; }
+  .step .line { width: 2px; flex: 1; background: linear-gradient(to bottom, var(--teal), var(--lane-line)); margin: 2px 0; }
+  .step .body { padding-bottom: 22px; }
+  .step .when { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--teal); margin-bottom: 4px; }
+  .step .body p { margin: 0; }
+  .step:first-child .node { background: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+  .step:first-child .when { color: var(--gold); }
+  .arrow-back { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); text-align:center; margin: 6px 0 18px; }
+
+  /* ---------- SYNTHESIS — climax ---------- */
+  section.synth { background: var(--ground); color: #e8edf2; border-bottom: none; position: relative; overflow: hidden; }
+  section.synth .grid-bg {
+    position:absolute; inset:0;
+    background-image:
+      repeating-linear-gradient(90deg, transparent 0, transparent 119px, rgba(127,198,191,0.05) 119px, rgba(127,198,191,0.05) 120px);
+    pointer-events:none;
+  }
+  section.synth .wrap { position: relative; }
+  section.synth .eyebrow { color: #7fc6bf; }
+  section.synth h2 { color: #fff; }
+  section.synth .lede { color: #aeb9c4; }
+  .keystones { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 36px 0; }
+  .ks {
+    background: var(--ground-2); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 6px; padding: 24px; position: relative;
+  }
+  .ks .n { font-family: var(--mono); font-size: 12px; color: var(--teal); font-weight: 700; letter-spacing: 0.1em; }
+  .ks h3 { font-family: var(--serif); font-size: 20px; font-weight: 600; color: #fff; margin: 10px 0 10px; line-height: 1.2; }
+  .ks p { margin: 0; font-size: 15px; color: #aeb9c4; }
+  .ks.lever { border-color: var(--teal); background: linear-gradient(160deg, #16302f, #141b24); }
+  .ks.lever .n, .ks.lever h3 { color: #7fc6bf; }
+
+  .chosen-card {
+    background: #fff; color: var(--ink); border-radius: 8px; overflow: hidden;
+    box-shadow: 0 30px 70px -30px rgba(0,0,0,0.6);
+    border-top: 5px solid var(--teal);
+  }
+  .chosen-card .bar { background: var(--teal); color: #fff; padding: 12px 28px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; display:flex; justify-content: space-between; align-items:center; }
+  .chosen-card .bar .check { font-size: 14px; }
+  .chosen-card .inner { padding: 30px 32px 34px; }
+  .chosen-card h3 { font-family: var(--serif); font-size: clamp(24px,4vw,32px); font-weight: 600; margin: 0 0 14px; line-height: 1.15; letter-spacing: -0.01em; }
+  .chosen-card .desc { font-size: 17px; color: var(--ink-soft); margin: 0 0 24px; }
+  .spec-grid { display:grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--lane-line); border:1px solid var(--lane-line); border-radius: 5px; overflow:hidden; }
+  .spec-grid .c { background:#fff; padding: 16px 18px; }
+  .spec-grid .c .k { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 6px; }
+  .spec-grid .c .v { font-size: 15px; font-weight: 500; }
+
+  /* ---------- footer ---------- */
+  footer { padding: 40px 0 64px; }
+  footer .note { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); letter-spacing: 0.04em; line-height: 1.8; }
+  footer .quote { font-family: var(--serif); font-style: italic; font-size: 22px; color: var(--ink); max-width: 32ch; margin: 0 0 28px; line-height: 1.3; }
+  footer .quote span { color: var(--teal); }
+
+  a:focus-visible, *:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+  @media (max-width: 620px) {
+    body { font-size: 16px; }
+    .jtbd-pair, .keystones, .spec-grid { grid-template-columns: 1fr; }
+    .insight-stack .row { grid-template-columns: 1fr; }
+    .insight-stack .row .meta { white-space: normal; }
+    .lane-row { grid-template-columns: 72px 1fr; }
+    section { padding: 48px 0; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
+    .reveal.in { opacity: 1; transform: none; }
+  }
+</style>
+
+<header class="hero">
+  <div class="grid-bg" aria-hidden="true"></div>
+  <div class="wrap">
+    <p class="kicker"><span>Nearform × KPMG UK Audit</span><span class="dot" aria-hidden="true"></span><span>BST Spike</span><span class="dot" aria-hidden="true"></span><span>Confidential</span></p>
+    <h1>The <em>Double-Booking</em> Guard</h1>
+    <p class="goal">Choose the smallest app slice that best showcases BMAD multi-role ways of working — PO, Delivery Lead, engineers — on a live-ish product.</p>
+
+    <div class="meta-row">
+      <div class="cell"><div class="k">Session</div><div class="v">BST scheduling spike</div></div>
+      <div class="cell"><div class="k">Date</div><div class="v">2026-06-30</div></div>
+      <div class="cell"><div class="k">Mode</div><div class="v">Creative Partner</div></div>
+      <div class="cell"><div class="k">Techniques</div><div class="v">4 · converged</div></div>
+    </div>
+
+    <div class="booking-demo" aria-label="Diagram: a person booked on two overlapping jobs; the system refuses the clash">
+      <div class="caption">// the feature, in one picture</div>
+      <div class="lane-row">
+        <div class="who">A. Okafor</div>
+        <div class="lane-track">
+          <span class="col" style="left:25%"></span><span class="col" style="left:50%"></span><span class="col" style="left:75%"></span>
+          <span class="blk ok" style="left:6%; width:40%">JOB-118</span>
+          <span class="blk clash" style="left:38%; width:42%">JOB-204 ✕</span>
+        </div>
+      </div>
+      <div class="lane-row">
+        <div class="who">R. Mehta</div>
+        <div class="lane-track">
+          <span class="col" style="left:25%"></span><span class="col" style="left:50%"></span><span class="col" style="left:75%"></span>
+          <span class="blk ok" style="left:52%; width:36%">JOB-119</span>
+        </div>
+      </div>
+      <p class="clash-note"><span class="x">✕</span> Assignment refused — the date range clashes with an existing booking.</p>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+
+    <!-- (1) Job to Be Done -->
+    <section class="reveal">
+      <div class="seq"><span class="num">01</span><span class="label">Technique · Job to Be Done</span></div>
+      <h2>What is this spike actually hired to do?</h2>
+      <p class="lede">Before picking a feature, name the customer. The app has two — and only one of them is the app.</p>
+
+      <div class="jtbd-pair">
+        <div class="cust primary">
+          <div class="role">Surface customer</div>
+          <h3>The planner</h3>
+          <p class="job">Assign the right people to jobs by skills and availability — and never get caught double-booking someone.</p>
+        </div>
+        <div class="cust real">
+          <span class="badge">the real job</span>
+          <div class="role">Customer behind the customer</div>
+          <h3>KPMG &amp; Nearform</h3>
+          <p class="job">Establish ways of working both sides agree on — reusable to build the actual project once Discovery starts. We are pre-Discovery now.</p>
+        </div>
+      </div>
+
+      <div class="insight-stack">
+        <div class="row"><p>Hottest KPMG pushback is limited trust in AI building the app. Mitigate with a heavy test harness, automated multi-model reviews, and human-in-the-loop — likely all three.</p><span class="meta by user">Planner · Pete</span></div>
+        <div class="row"><p>A human leaves the final PR approval and owns it at that point — net <em>more</em> accountability than today, not less. AI is tooling that streamlines the work, not the thing that signs off.</p><span class="meta by user">Planner · Pete</span></div>
+        <div class="row"><p>Put the PRD in version control: product <em>decisions</em> become versioned and visible — when and where each was captured — not just the implementation.</p><span class="meta by user">Planner · Pete</span></div>
+        <div class="row"><p>Keep the pre-AI norm — a PR must be small enough for one human to read and understand it. That means small vertical slices (with a caveat: AI tools that generate large changes could make this a real blocker).</p><span class="meta by user">Planner · Pete</span></div>
+      </div>
+
+      <div class="pushback">
+        <p class="h">⚑ Anticipated client pushback</p>
+        <p><strong>Trust:</strong> rubber-stamping isn't AI-specific — it exists across all software engineering. Arguably a good multi-model agentic review beats some human reviewers. The harder problem is that the merge decision itself gets heavier; multi-modal review is the tooling that supports the human carrying it.</p>
+        <p><strong>Technology:</strong> KPMG may prefer Python over JS, and/or the full Azure suite (Azure DevOps) instead of GitHub.</p>
+      </div>
+    </section>
+
+    <!-- (2) Role Playing -->
+    <section class="reveal">
+      <div class="seq"><span class="num">02</span><span class="label">Technique · Role Playing</span></div>
+      <h2>Four voices around one PR</h2>
+      <p class="lede">Run the engagement's tensions as a conversation — the skeptic, the product owner, the engineer, the delivery lead.</p>
+
+      <div class="thread">
+        <div class="turn kpmg">
+          <div class="avatar av-kpmg" aria-hidden="true">K</div>
+          <div class="bubble">
+            <div class="name">KPMG skeptic</div>
+            <p>How do I trust code an AI wrote? Where does accountability live when the machine does the typing?</p>
+          </div>
+        </div>
+        <div class="turn">
+          <div class="avatar av-po" aria-hidden="true">PO</div>
+          <div class="bubble">
+            <div class="name">Product Owner</div>
+            <p>The PR description stays simple and compact: it restates the problem and the acceptance criteria from the ticket, then maps <em>exactly</em> which tests cover each AC. The PRD lives in version control, so the decision trail is visible too.</p>
+          </div>
+        </div>
+        <div class="turn">
+          <div class="avatar av-eng" aria-hidden="true">EN</div>
+          <div class="bubble">
+            <div class="name">Engineer</div>
+            <p>Good testing makes the PR readable — <strong>the test evidence is the product, it needs to read well.</strong> The reviewer focuses on the tests, skims the implementation, and watches the sensitive files: package.json, infra, dependencies.</p>
+          </div>
+        </div>
+        <div class="turn">
+          <div class="avatar av-lead" aria-hidden="true">DL</div>
+          <div class="bubble">
+            <div class="name">Delivery Lead</div>
+            <p>A human leaves the final approval and owns it — that's <em>more</em> accountability than today. And on velocity: structured right, the product mostly builds itself and we're mostly observers. Slower than unsupervised AI, sure — that's not the bar — but requirements and dev cycles both get much faster, and with the right automation we power through the stories.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- (3) One Feature Only -->
+    <section class="reveal">
+      <div class="seq"><span class="num">03</span><span class="label">Technique · One Feature Only</span></div>
+      <h2>Cut everything but one</h2>
+      <p class="lede">If the spike could ship a single capability, which one carries the whole demonstration? Everything else gets struck.</p>
+
+      <div class="feature-list">
+        <div class="feat"><span class="mark">✕</span><span class="name">Skills &amp; availability matching</span></div>
+        <div class="feat"><span class="mark">✕</span><span class="name">Calendar &amp; capacity views</span></div>
+        <div class="feat"><span class="mark">✕</span><span class="name">Reassignment &amp; reschedule flows</span></div>
+        <div class="feat chosen" aria-label="Chosen feature">
+          <span class="mark">●</span>
+          <span class="name">The double-booking guard
+            <span class="why">Assign a person to a job over a date range; the system refuses any assignment that clashes with an existing one. Non-trivial because of concurrency: two planners booking the same person mid-flight must be handled as a race/conflict — not a naive read-then-check. That's what lets the spike showcase <em>how</em> we work, not trivial CRUD.</span>
+          </span>
+        </div>
+        <div class="feat"><span class="mark">✕</span><span class="name">Notifications &amp; approvals workflow</span></div>
+        <div class="feat"><span class="mark">✕</span><span class="name">Reporting &amp; utilisation dashboards</span></div>
+      </div>
+
+      <p class="scope-note"><span class="tag pill">scope · by Pete</span> <span>Only the concurrent-clash edge for the spike — skip partial-overlap and touching-boundary cases. Target: wrap the whole spike in 1–2 days.</span></p>
+    </section>
+
+    <!-- (4) Backcasting -->
+    <section class="reveal">
+      <div class="seq"><span class="num">04</span><span class="label">Technique · Backcasting</span></div>
+      <h2>Work backwards from the demo</h2>
+      <p class="lede">Start at the outcome and walk back to the first line written tomorrow.</p>
+
+      <div class="backcast">
+        <div class="bc-head"><span>End state</span><span>↑ reasoned backwards ↑</span></div>
+
+        <div class="step">
+          <div class="rail"><span class="node"></span><span class="line"></span></div>
+          <div class="body">
+            <div class="when">The demo</div>
+            <p>One human-approved PR that proves AI-authored but human-owned: a readable, test-first change to the double-booking guard, with the merge decision sitting clearly with a person.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="rail"><span class="node"></span><span class="line"></span></div>
+          <div class="body">
+            <div class="when">Along the way</div>
+            <p>Keep using the tools humans normally use: link the flow to real stories in Jira / Azure Boards, even though code + PRD-in-version-control is the source of truth. Meet the client where they are — the AB# link keeps both views in sync for free.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="rail"><span class="node"></span><span class="line"></span></div>
+          <div class="body">
+            <div class="when">The build</div>
+            <p>Let the BMAD pipeline pull the React / Node / Azure scaffold into existence as the first story demands it — not scaffold-first.</p>
+          </div>
+        </div>
+
+        <div class="step">
+          <div class="rail"><span class="node"></span></div>
+          <div class="body">
+            <div class="when">Step one, tomorrow · by Pete</div>
+            <p>Write the first PRD line. PRD-first. Everything downstream is pulled from there.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- SYNTHESIS — climax -->
+  <section class="synth reveal">
+    <div class="grid-bg" aria-hidden="true"></div>
+    <div class="wrap">
+      <p class="eyebrow">Synthesis · the four keystones</p>
+      <h2>Where the four techniques meet</h2>
+      <p class="lede">Each thread collapsed into the next. Four insights, then one direction.</p>
+
+      <div class="keystones">
+        <div class="ks">
+          <span class="n">01</span>
+          <h3>Engineering hygiene is the sales pitch</h3>
+          <p>A readable, test-first PR is both the dev practice and the KPMG trust demo — the same artifact does both jobs at once.</p>
+        </div>
+        <div class="ks">
+          <span class="n">02</span>
+          <h3>The clash forces the conversation</h3>
+          <p>The concurrent-clash edge is what forces the PO ↔ engineer spec negotiation. Choosing the feature and choosing the multi-role showcase are one decision.</p>
+        </div>
+        <div class="ks">
+          <span class="n">03</span>
+          <h3>The code-vs-tools tension dissolves</h3>
+          <p>PRD-in-version-control is canonical; Azure Boards is the human view; the AB# link keeps them in sync for free. No contradiction left to manage.</p>
+        </div>
+        <div class="ks lever">
+          <span class="n">04</span>
+          <h3>Small vertical slices — the keystone lever</h3>
+          <p>One constraint pays three times: accountability (a human can genuinely review and own it), velocity (review stays cheap, so it doesn't eat the AI speed gains), and reviewability.</p>
+        </div>
+      </div>
+
+      <div class="chosen-card">
+        <div class="bar"><span>Chosen direction</span><span class="check">✓ confirmed</span></div>
+        <div class="inner">
+          <h3>Build the double-booking guard — concurrent-clash only — PRD-first.</h3>
+          <p class="desc">Demoed as one human-approved PR proving AI-authored but human-owned. The app is the pretext; the way of working is the product.</p>
+          <div class="spec-grid">
+            <div class="c"><div class="k">Feature</div><div class="v">Double-booking guard</div></div>
+            <div class="c"><div class="k">Scope</div><div class="v">Concurrent clash only</div></div>
+            <div class="c"><div class="k">Timebox</div><div class="v">1–2 days</div></div>
+            <div class="c"><div class="k">Order</div><div class="v">PRD-first, pull scaffold</div></div>
+            <div class="c"><div class="k">Proof</div><div class="v">One human-owned PR</div></div>
+            <div class="c"><div class="k">Truth</div><div class="v">Code + PRD in VC</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <p class="quote">&ldquo;The test evidence is the product — <span>it needs to read well.</span>&rdquo;</p>
+      <p class="note">
+        Brainstorming keepsake · BST scheduling spike · 2026-06-30 · Creative Partner mode<br>
+        Four techniques, in session order: Job to Be Done → Role Playing → One Feature Only → Backcasting → Synthesis.<br>
+        Human-generated ideas attributed to the planner (Pete) where the session tagged them &ldquo;by user&rdquo;. Confidential — Nearform × KPMG, not publicly announced.
+      </p>
+    </div>
+  </footer>
+</main>
+
+<script>
+  (function () {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    var els = document.querySelectorAll('.reveal');
+    if (!('IntersectionObserver' in window)) { els.forEach(function (e) { e.classList.add('in'); }); return; }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+    }, { threshold: 0.12 });
+    els.forEach(function (e) { io.observe(e); });
+  })();
+</script>
