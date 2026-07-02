@@ -6,13 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A throwaway spike: a small staff-to-job scheduling app, loosely shaped like BST, built to practise the BMAD v6 ways of working before the real engagement starts. The app is not the point; the pipeline is. Engagement and cross-repo context lives in the workspace wiki at `../docs/wiki/` (start at `overview.md`). The spike is scoped in the wiki's delivery proposal (`../docs/wiki/topics/bmad-delivery-proposal.md`).
 
-## Stack (assumed, mirrors expected BST)
+## Source of truth for stack and hard rules
 
-- **Frontend:** React.
-- **Backend:** Node.
-- **Hosting:** Azure.
-- **Code / CI / review:** GitHub (GitHub Actions, GitHub Agentic Workflows for multi-model review).
-- **Board:** Azure Boards, linked to GitHub so commits and PRs update tickets.
+The stack and the non-negotiable rules (Azure-only, UK residency, security, ATDD-first, spec-as-contract, agents-draft-humans-approve) live in **`_bmad-output/project-context.md`**, the BMAD project constitution. That file is the single source of truth; do not restate those rules here. This `CLAUDE.md` holds only the operational detail below (commands, architecture, conventions).
 
 ## Commands
 
@@ -32,7 +28,7 @@ A throwaway spike: a small staff-to-job scheduling app, loosely shaped like BST,
 
 ## Conventions
 
-Agent rules live in a clear layering: `project-context.md` (BMAD's constitution, the hard rules every agent obeys) alongside this `CLAUDE.md` / `AGENTS.md` (the operating manual). One of these is the named source of truth; keep the others in sync with it. Part of the spike is deciding which and proving they do not drift.
+Agent rules live in a clear layering: `project-context.md` (BMAD's constitution) is the **named source of truth** for the stack and hard rules; this `CLAUDE.md` / `AGENTS.md` is the operating manual (commands, architecture, conventions) and must not restate those rules. Part of the spike is proving this split holds and the files do not drift.
 
 ## Testing
 
