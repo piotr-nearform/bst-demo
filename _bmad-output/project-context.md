@@ -24,7 +24,7 @@ Mark the confirmed-vs-indicative split and keep it; do not let indicative harden
 - **Acceptance/E2E tests: Playwright.** Authored from story AC.
 - **Unit tests / lint / type-check:** TBD once scaffolded; record exact commands in `CLAUDE.md` when they exist.
 - **Code, CI, code review: GitHub** (Actions; GitHub Agentic Workflows for multi-model PR review).
-- **Board: Azure Boards**, linked to GitHub (`AB#<id>` references update work items).
+- **Board: Linear** (spike decision, 2026-07-03), linked to GitHub via the Linear issue key in the branch/PR/story so work items stay in sync. _(Supersedes the earlier Azure Boards `AB#<id>` intent for the spike — chosen for the easiest MCP-driven board sync; the real engagement may revert to Azure Boards / an Atlassian tool.)_
 
 ## Critical Implementation Rules
 
