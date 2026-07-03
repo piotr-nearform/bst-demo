@@ -50,7 +50,11 @@ Where code-level trust is proven — the review step of the dev cycle. Two compo
 1. **Automated multi-model breadth pass.** A **GitHub Agentic Workflow** runs **dual-model** review on the PR — breadth a single human can't match in the available time, captured on the PR as a review trail. *(Which two models, and exactly what they inspect, is CI config — firmed up when the pipeline is scaffolded. Not a PRD concern.)*
 2. **Named human approval.** A person reads the **tests** closely, **skims** the implementation, and **watches sensitive files** (dependencies, `package.json`, infra). They own the merge and the accountability — more than today, not less. No agent marks its own work done.
 
-The PRD references only the *outcome* of this gate (a review trail + a named approval on the PR), never this mechanism — the mechanism lives here and, later, in `.github/workflows/`.
+The PRD references only the *outcome* of this gate (a review trail + a named approval on the PR), never this mechanism — the mechanism lives here and, later, in `.github/workflows/`. It is **out of the architecture spine by design** (it's CI/delivery infra, not feature structure); the spine carries only the "delivery discipline" convention and defers here.
+
+**Spike model choice (2026-07-03).** The breadth pass uses **GitHub's out-of-the-box models** (whatever GitHub Agentic Workflows provides by default) — good enough to demonstrate the gate. This **carves the Azure-only / UK-residency constraint out of the review *tooling*** for the spike only; the real engagement must revisit whether review models have to be Azure-hosted (e.g. Azure OpenAI / AI Foundry, UK). The carve-out applies to the *review tool*, not to the app.
+
+**This gate is a build task, sequenced first.** Standing up the GitHub Agentic Workflow is an **enabler story / tech task that precedes all feature stories** — the feature's own dev-story PR must flow *through* this gate to prove the ways-of-working. It is authored in `bmad-create-epics-and-stories` as its own item (not a story under the double-booking feature) and scaffolded via `bmad-testarch-ci`.
 
 ---
 
