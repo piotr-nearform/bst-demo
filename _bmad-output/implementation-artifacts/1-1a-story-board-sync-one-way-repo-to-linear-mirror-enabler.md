@@ -1,6 +1,10 @@
+---
+baseline_commit: 4406657ed0bff79ac0bf8cf07146c36275986219
+---
+
 # Story 1.1a: Story→board sync — one-way repo → Linear mirror (enabler)
 
-Status: ready-for-dev
+Status: review
 Linear: <!-- populated by first sync run; e.g. BST-12 -->
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
@@ -47,23 +51,23 @@ Reproduced verbatim from `_bmad-output/planning-artifacts/epics.md` § "Story 1.
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Scaffold the sync mechanism as a Claude Code skill** (AC: 1,2,3,4)
-  - [ ] Implement as a Claude Code skill/command `sync-stories-to-linear` under `.claude/skills/` (**decided** — Linear MCP-driven, no new secret; see Dev Notes "Implementation form"), invokable on demand. 1.1b will add the sprint-planning hook and the confirm gate on top of it.
-  - [ ] The skill enumerates the full backlog from `sprint-status.yaml` (**decided** — see Dev Notes "Enumerator"), resolves each story's Linear ticket by marker, and creates-or-updates. No GitHub Issues involved.
-- [ ] **Task 2 — Define the durable match key (marker) and matching** (AC: 3)
-  - [ ] Stamp the **repo story id** (the sprint-status key, e.g. `1-1a-story-board-sync-one-way-repo-to-linear-mirror-enabler`) into each Linear ticket at creation time, so the marker lands atomically with the ticket (crash-safe). Recommended: HTML-comment marker lines in the ticket description — `<!-- bmad-story-id: <story_key> -->` (the match key) and `<!-- bmad-content-hash: <hash> -->` (the idempotency key, Task 4).
-  - [ ] **Matching keys on `bmad-story-id` only** (never title, never the repo-side cached key): list issues in the `BST Spike` project and find the one whose description contains that id marker. The content-hash marker is used only to decide no-op-vs-update, never to match.
-- [ ] **Task 3 — Create / backfill** (AC: 1)
-  - [ ] For every story with no matching ticket, create one in team `BST` / project `BST Spike` with: title from the story's heading (H1 of the per-story file, or the `### Story X.Y:` heading when sourced from epics.md), description = marker (id + content-hash, Task 2) + canonical-repo-file link (`<story_key>.md` if it exists, else `epics.md#Story-X.Y`) + the story's user-story block + its ACs (a faithful mirror).
-  - [ ] Include this story (1.1a) itself in the backfill.
-- [ ] **Task 4 — Idempotent upsert (no-op via content hash)** (AC: 2)
-  - [ ] Decide no-op vs update by the **content hash in the marker**, NOT by diffing rendered prose (Linear re-renders markdown on save — whitespace/link/list normalization means a byte compare of `get_issue` output would falsely report "changed" every run and violate AC2). Compute a stable hash of the canonicalized source spec; if it equals the ticket's stored `bmad-content-hash` → **no-op (zero writes)**; if it differs → update the ticket body in place and rewrite the hash marker (same ticket, never a new one).
-  - [ ] Canonicalize the source before hashing (e.g. trim + collapse trailing whitespace) so the hash is deterministic across runs. Re-running with no repo changes must make zero writes.
-- [ ] **Task 5 — Repo-side key write-back (one-way link)** (AC: 4)
-  - [ ] After a ticket is created, write its Linear key back into the story file as a working-tree edit (the `Linear:` line in this header) — never a direct `git push`. It rides the next human-approved PR.
-  - [ ] Write the repo cache **only for stories that have a per-story `.md` file** (today just 1.1a). Fileless backfilled stories get no repo cache — that is fine, because matching is by the Linear-side marker, not the cache. Do not create story files just to hold a key.
-  - [ ] Treat the repo-side key as a cache only; nothing flows Linear → repo except this identifier.
-- [ ] **Task 6 — Perform the manual first backfill run** (AC: 1)
+- [x] **Task 1 — Scaffold the sync mechanism as a Claude Code skill** (AC: 1,2,3,4)
+  - [x] Implement as a Claude Code skill/command `sync-stories-to-linear` under `.claude/skills/` (**decided** — Linear MCP-driven, no new secret; see Dev Notes "Implementation form"), invokable on demand. 1.1b will add the sprint-planning hook and the confirm gate on top of it.
+  - [x] The skill enumerates the full backlog from `sprint-status.yaml` (**decided** — see Dev Notes "Enumerator"), resolves each story's Linear ticket by marker, and creates-or-updates. No GitHub Issues involved.
+- [x] **Task 2 — Define the durable match key (marker) and matching** (AC: 3)
+  - [x] Stamp the **repo story id** (the sprint-status key, e.g. `1-1a-story-board-sync-one-way-repo-to-linear-mirror-enabler`) into each Linear ticket at creation time, so the marker lands atomically with the ticket (crash-safe). Recommended: HTML-comment marker lines in the ticket description — `<!-- bmad-story-id: <story_key> -->` (the match key) and `<!-- bmad-content-hash: <hash> -->` (the idempotency key, Task 4).
+  - [x] **Matching keys on `bmad-story-id` only** (never title, never the repo-side cached key): list issues in the `BST Spike` project and find the one whose description contains that id marker. The content-hash marker is used only to decide no-op-vs-update, never to match.
+- [x] **Task 3 — Create / backfill** (AC: 1)
+  - [x] For every story with no matching ticket, create one in team `BST` / project `BST Spike` with: title from the story's heading (H1 of the per-story file, or the `### Story X.Y:` heading when sourced from epics.md), description = marker (id + content-hash, Task 2) + canonical-repo-file link (`<story_key>.md` if it exists, else `epics.md#Story-X.Y`) + the story's user-story block + its ACs (a faithful mirror).
+  - [x] Include this story (1.1a) itself in the backfill.
+- [x] **Task 4 — Idempotent upsert (no-op via content hash)** (AC: 2)
+  - [x] Decide no-op vs update by the **content hash in the marker**, NOT by diffing rendered prose (Linear re-renders markdown on save — whitespace/link/list normalization means a byte compare of `get_issue` output would falsely report "changed" every run and violate AC2). Compute a stable hash of the canonicalized source spec; if it equals the ticket's stored `bmad-content-hash` → **no-op (zero writes)**; if it differs → update the ticket body in place and rewrite the hash marker (same ticket, never a new one).
+  - [x] Canonicalize the source before hashing (e.g. trim + collapse trailing whitespace) so the hash is deterministic across runs. Re-running with no repo changes must make zero writes.
+- [x] **Task 5 — Repo-side key write-back (one-way link)** (AC: 4)
+  - [x] After a ticket is created, write its Linear key back into the story file as a working-tree edit (the `Linear:` line in this header) — never a direct `git push`. It rides the next human-approved PR.
+  - [x] Write the repo cache **only for stories that have a per-story `.md` file** (today just 1.1a). Fileless backfilled stories get no repo cache — that is fine, because matching is by the Linear-side marker, not the cache. Do not create story files just to hold a key.
+  - [x] Treat the repo-side key as a cache only; nothing flows Linear → repo except this identifier.
+- [ ] **Task 6 — Perform the manual first backfill run** (AC: 1) — _HUMAN-performed (AC1 + guardrail): the outward-facing Linear writes are left for Pete. See skill "How to run"._
   - [ ] Once the skill exists, run it manually against the current backlog (bootstrap: the sync did not exist when these stories were authored). Confirm it creates one mirror ticket per story, each carrying the marker + repo link.
 - [ ] **Task 7 — Capture verification evidence** (verification — see Testing)
   - [ ] Record a manual-walkthrough evidence note (for the PR) proving: (a) backfill created N marker-stamped tickets incl. 1.1a; (b) a second run is a clean no-op (no duplicates); (c) editing one story spec updates only that ticket; (d) a simulated interrupted run (ticket created, key not yet written back) is re-found by marker on the next run — no duplicate.
@@ -147,10 +151,24 @@ Per the epic's **Delivery & verification conventions**: enablers (1.1a/1.1b/1.2)
 
 ### Agent Model Used
 
-
+Claude Opus 4.8 (1M context) — `claude-opus-4-8[1m]` (bmad-dev-story workflow).
 
 ### Debug Log References
 
+- Read-only dry-run validated the deterministic contract without any Linear write: enumerating `sprint-status.yaml` `development_status` (excluding `epic-*` / `*-retrospective`) yields 8 stories (1.1a, 1.1b, 1.2, 1.3–1.7); the `X.Y` derivation from the story-key prefix matches the `### Story X.Y` headings in `epics.md` exactly; only 1.1a has a per-story file (so only 1.1a gets a repo-side key write-back).
+
 ### Completion Notes List
 
+- **Built the skill `sync-stories-to-linear`** at `.claude/skills/sync-stories-to-linear/SKILL.md` — an agent-executed, order-fixed procedure (enumerate → source content → hash → match by marker → decide create/update/no-op → apply → repo-side write-back) implementing the story's deterministic contract and Tasks 1–5. Linear MCP-driven (`list_issues`/`get_issue`/`save_issue`), no new secret (NFR3).
+- **Match key** = `<!-- bmad-story-id: <story_key> -->` in the ticket description, stamped atomically at creation (crash-safe, AC3). Matching is on that marker only — never title, date, or the repo-side cached key. Legacy `BST-5`/`BST-6` carry no marker and are explicitly out of scope (never matched/retired here).
+- **Idempotency** = `<!-- bmad-content-hash: <sha256> -->`; hash computed with a real tool over the canonicalized (title + user-story + ACs) source, NOT by diffing Linear's re-rendered prose. Equal → zero-write no-op (AC2); differ → in-place update of the same ticket; no match → create.
+- **One-way + key lifecycle (AC4):** on create, the minted key is written to the story file's `Linear:` header as a working-tree edit only (no push/PR/merge by the agent) — and only for stories that have a per-story `.md` file. The `Linear:` header convention is already seeded in this file.
+- **Guardrails honoured:** no real Linear tickets created/updated/deleted (Task 6 backfill left for the human per AC1); no `git push`/PR/merge; story not marked `done`; no secrets introduced.
+- **Deferred to the human (outward-facing):** Task 6 (manual first backfill) and Task 7 (evidence capture: backfill / no-op re-run / single-ticket update / crash-safe re-find). Exact steps + evidence checklist are documented in the skill's "How to run" section. Story 1.1a's own `Linear:` key stays a placeholder until that first backfill mints it.
+- **Verification method:** per the epic's Delivery & verification conventions, enablers are verified by manual walkthrough + evidence, not Playwright — there is no app scaffold yet. The read-only dry-run above confirms the deterministic (repo-side) half of the contract.
+
 ### File List
+
+- `.claude/skills/sync-stories-to-linear/SKILL.md` (new) — the sync skill.
+- `_bmad-output/implementation-artifacts/1-1a-story-board-sync-one-way-repo-to-linear-mirror-enabler.md` (modified) — baseline_commit frontmatter, task checkboxes, Dev Agent Record.
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified) — 1.1a status ready-for-dev → in-progress → review.
