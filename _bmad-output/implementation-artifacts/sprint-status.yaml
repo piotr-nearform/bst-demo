@@ -51,7 +51,8 @@ development_status:
   # Epic 1: Double-Booking Guard — human-owned, test-first delivery
   epic-1: backlog
   # Phase-zero enablers (must precede feature stories)
-  1-1-story-board-sync-repo-story-spec-mirrored-to-linear-one-way-enabler: backlog
+  1-1a-story-board-sync-one-way-repo-to-linear-mirror-enabler: backlog
+  1-1b-story-board-sync-drift-detection-reconcile-and-confirm-enabler: backlog
   1-2-pr-review-gate-multi-model-review-named-human-approval-enabler: backlog
   # Feature stories
   1-3-data-layer-double-booking-impossible-by-construction: backlog

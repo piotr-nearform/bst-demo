@@ -30,7 +30,7 @@ NFR2: Azure only, UK data residency. Anything hosted or stored targets Azure in 
 NFR3: No secrets in code or git — use environment variables / Azure Key Vault. Validate and sanitise all external input. (Constitution)
 NFR4: ATDD is non-negotiable and test-first — Playwright acceptance tests are authored from the story AC, red before implementation, and never weakened, skipped, or rewritten to go green. (Constitution)
 NFR5: Spec-as-contract — if behaviour changes, the PRD and the linked story change in the same PR; drift is treated as a failure.
-NFR6: Slices stay small — the whole feature lands in one PR a single reviewer can read and own; the PR carries the AC→test table, the spec in-diff with author + timestamp, and the two-way board link.
+NFR6: Slices stay small — the whole feature lands in one PR a single reviewer can read and own; the PR carries the AC→test table, the spec in-diff with author + timestamp, and the board link (one-way, repo → Linear per the 2026-07-03 spike decision).
 NFR7: Review focuses where risk is — the reviewer reads the tests closely, skims the implementation, and watches sensitive files (dependencies, package.json, infra).
 
 ### Additional Requirements
@@ -61,7 +61,7 @@ FR3: Epic 1 — Clash rejected (inclusive overlap); enforced by DB EXCLUDE const
 FR4: Epic 1 — Concurrency atomic, exactly-one-wins (P0); AD-1 + AD-7
 FR5: Epic 1 — Deterministic loser contract, HTTP 409 + UI message; AD-2, AD-3, AD-6
 
-All 5 FRs mapped to Epic 1; no gaps. NFRs are addressed across the epic (NFR2–NFR7 are cross-cutting/constitutional; NFR1 concurrency correctness is the P0 spine of the feature stories; NFR6/NFR7 are delivered by the two enabler stories).
+All 5 FRs mapped to Epic 1; no gaps. NFRs are addressed across the epic (NFR2–NFR7 are cross-cutting/constitutional; NFR1 concurrency correctness is the P0 spine of the feature stories; NFR6/NFR7 are delivered by the enabler stories 1.1a/1.1b/1.2).
 
 ## Epic List
 
@@ -71,48 +71,69 @@ A planner can create person → job assignments over an inclusive date range thr
 
 **FRs covered:** FR1, FR2, FR3, FR4, FR5 (all)
 
-**NFRs addressed:** NFR1 (concurrency correctness — P0 spine), NFR2–NFR5 (Azure/UK, secrets, ATDD, spec-as-contract — cross-cutting), NFR6 (small single-reviewer PR + two-way board link — enabler story), NFR7 (risk-based review gate — enabler story)
+**NFRs addressed:** NFR1 (concurrency correctness — P0 spine), NFR2–NFR5 (Azure/UK, secrets, ATDD, spec-as-contract — cross-cutting), NFR6 (small single-reviewer PR + one-way repo → Linear board link — enabler stories), NFR7 (risk-based review gate — enabler story)
 
-**Story ordering (detailed in Step 3):** the two phase-zero enablers come first as ordered stories — story→board sync (one-way repo → Linear, reconcile-and-confirm: each story create/update in version control is mirrored to its Linear ticket, on demand or hooked to sprint planning, with a drift-preview + human confirm gate; NFR6) and the PR review gate (multi-model GitHub Agentic Workflows + named-human approval, NFR7) — because the pipeline is the deliverable and these must precede feature stories. Then the data-layer story (schema + EXCLUDE constraint, pulled into existence PRD-first), then the feature stories. Stories are ordered so each depends only on earlier ones (no forward dependencies) and each fits a single dev-agent context.
+**Story ordering (detailed in Step 3):** the phase-zero enablers come first as ordered stories — story→board sync split into 1.1a (one-way repo → Linear mirror: backfill + idempotent upsert, on demand; NFR6) and 1.1b (drift detection + reconcile-and-confirm + sprint-planning hook), then the PR review gate 1.2 (multi-model GitHub Agentic Workflows + named-human approval, NFR7) — because the pipeline is the deliverable and these must precede feature stories. Then the data-layer story (schema + EXCLUDE constraint, pulled into existence PRD-first), then the feature stories. Stories are ordered so each depends only on earlier ones (no forward dependencies) and each fits a single dev-agent context.
 
 ## Epic 1: Double-Booking Guard — human-owned, test-first delivery
 
 A planner can create person → job assignments over an inclusive date range through a minimal UI, and the system atomically refuses double-bookings for the same person — proven by a red-first P0 concurrency test — delivered through the AI-drafts / human-approves pipeline the spike exists to demonstrate.
 
-### Story 1.1: Story→board sync — repo story spec mirrored to Linear (one-way, reconcile-and-confirm) (enabler)
+**Delivery & verification conventions (epic-level, apply to all stories):**
+
+- **Story → PR mapping.** Enabler stories (1.1a, 1.1b, 1.2) each land as their own small PR (they set up the pipeline). The **feature stories 1.3–1.7 accumulate into the single feature PR** that is the spike's headline deliverable (PRD §2 — "one single human-approved pull request"). Per-story `review`/`done` statuses in the sprint plan track story completion within that one feature PR, not one PR per story.
+- **ATDD applies to the feature stories (1.3–1.7).** Their ACs are authored as red-first Playwright/API tests before implementation (NFR4). Enabler stories 1.1a/1.1b/1.2 are verified by **manual walkthrough / CI dry-run + evidence** (their ACs cover sync behaviour, human-confirm gates, and workflow config that no Playwright test can naturally drive) — this is a scoped exception, not a waiver of NFR4.
+- **Test isolation (all acceptance/P0 runs).** Tests run against a fresh, isolated database — never shared mutable state — so seeded preconditions (e.g. "person booked 3–7 Aug") and "exactly one wins" are repeatable and non-flaky.
+
+### Story 1.1a: Story→board sync — one-way repo → Linear mirror (enabler)
 
 As a delivery team,
-I want a one-way sync (repo → Linear) that mirrors each BMAD story spec to a linked Linear ticket — runnable on demand and wired into the sprint-planning job — which detects drift and reconciles with me before applying updates,
-So that the board always mirrors the canonical version-controlled stories, without a second source of truth and without silently overwriting tickets. (NFR6; agents-draft-humans-approve)
+I want a one-way sync (repo → Linear) that mirrors each BMAD story spec to a linked Linear ticket — runnable on demand — backfilling the existing backlog and never creating duplicates,
+So that the board mirrors the canonical version-controlled stories from a single source of truth, without a parallel GitHub Issues copy. (NFR6)
 
 **Acceptance Criteria:**
 
 _Backfill / create:_
 
-**Given** the sync runs against a backlog that predates it (e.g. the 7 stories from this session, none yet on the board)
+**Given** the sync runs against a backlog that predates it (e.g. the stories from this session, none yet on the board)
 **When** it runs for the first time
-**Then** it backfills — creating a linked Linear ticket for every story spec that has no ticket yet, including Story 1.1 itself.
+**Then** it backfills — creating a linked Linear ticket for every story spec that has no ticket yet, including this story itself
+**And** the first run for this spike's backlog is performed manually, since the sync does not yet exist when these stories are authored.
 
-_Idempotent upsert:_
+_Idempotent upsert, crash-safe match key:_
 
 **Given** the sync has already run
 **When** it runs again with no repo changes
-**Then** it makes no changes — an idempotent upsert keyed by the linking id, never a duplicate ticket
+**Then** it makes no changes — an idempotent upsert, never a duplicate ticket
 **And** a story whose spec changed has its ticket updated; an unchanged story is a no-op.
+
+**Given** a ticket may be created but the run interrupted before any repo-side key is recorded
+**When** the sync runs again
+**Then** it re-finds the existing ticket by the **repo story id stamped into the Linear ticket** (external id / marker) — the durable match key lives on the Linear side, so an interrupted run never produces a duplicate
+**And** the Linear-minted key cached in the repo is a convenience, not the source of matching.
 
 _One-way direction + key lifecycle:_
 
 **Given** Linear mints the ticket key on creation
-**When** a ticket is created
-**Then** that key is the single identifier recorded against the story spec in the repo — a linking identifier, not content flowing back
+**When** the key is recorded against the story spec in the repo
+**Then** it is written as a working-tree edit that rides the next human-approved PR (never a direct push, honouring agents-draft-humans-approve) — a linking identifier, not content flowing back
 **And** changes made only in Linear are not authoritative and never flow back into the repo.
 
-_Invocation — on-demand + sprint-planning hook + manual bootstrap:_
+### Story 1.1b: Story→board sync — drift detection + reconcile-and-confirm (enabler)
+
+As a delivery team,
+I want the sync to detect which tickets have drifted from their repo story spec, preview the changes, and reconcile with me before applying — and to be invokable on demand and hooked to the sprint-planning job,
+So that re-runs are safe and human-owned, and the board never gets silently overwritten. (NFR6; agents-draft-humans-approve)
+
+_Depends on: Story 1.1a (the one-way mirror it reconciles)._
+
+**Acceptance Criteria:**
+
+_Invocation — on-demand + sprint-planning hook:_
 
 **Given** the team needs the board refreshed
 **When** they invoke the dedicated sync command/skill on demand, or the sprint-planning job completes
-**Then** the sync runs against the current repo backlog
-**And** the first run for this spike's backlog (including Story 1.1) is performed manually, since the sync does not yet exist when these stories are authored.
+**Then** the sync runs against the current repo backlog.
 
 _Drift detection + reconcile-and-confirm:_
 
@@ -120,6 +141,13 @@ _Drift detection + reconcile-and-confirm:_
 **When** the sync runs
 **Then** it first reports which tickets are out of sync — classified as create / update / no-op — with a preview of what would change
 **And** it asks the user to confirm before applying, especially before a full ticket rewrite, writing nothing until confirmed (agents-draft-humans-approve).
+
+_Unresolvable link handling:_
+
+**Given** a story's recorded ticket key does not resolve in Linear (ticket deleted, key hand-edited, wrong id)
+**When** the sync runs
+**Then** it reports the story as an explicit drift item (not a silent recreate or a crash)
+**And** it asks the user how to proceed (recreate vs relink) before acting.
 
 _Documented direction:_
 
@@ -162,12 +190,19 @@ As a planner,
 I want my assignments stored in a schema that makes double-booking impossible at the data layer,
 So that no overlapping booking for a person can ever persist, regardless of application code. (FR3 substrate; AD-1, AD-4, AD-5 — pulls the scaffold into existence, PRD-first)
 
+_Dev note: `Person` and `Job` are pre-seeded, not managed here (PRD out-of-scope). The concrete `person_id`/`job_id` rows the tests in 1.3–1.7 book against are created by test setup/fixtures, not by a product feature._
+
 **Acceptance Criteria:**
 
 **Given** a fresh database
 **When** the version-controlled migration runs
 **Then** `btree_gist` is enabled via `CREATE EXTENSION IF NOT EXISTS` (with `azure.extensions` listing it)
 **And** the `assignment` table exists with `EXCLUDE USING gist (person_id WITH =, daterange(start_date, end_date, '[]') WITH &&)`. (AD-1, AD-5)
+
+**Given** the app/migration needs a database connection
+**When** it reads its configuration
+**Then** the connection string is supplied via an environment variable (Azure Key Vault when deployed), never hardcoded
+**And** no secret appears in the code or the diff. (NFR3)
 
 **Given** an existing assignment for a person over 3–7 Aug
 **When** an overlapping range for the same person — including the boundary case 7–10 Aug — is inserted directly
@@ -207,7 +242,7 @@ So that valid bookings are recorded. (FR1 API, FR2)
 **Given** the person has no assignment for the requested range
 **When** a planner POSTs a valid assignment (person, job, start, end)
 **Then** it is persisted
-**And** the API returns success with the created assignment. (FR1, FR2)
+**And** the API returns **HTTP 201 Created** with the created assignment as JSON — `{ "id": <uuid>, "personId": <uuid>, "jobId": <uuid>, "start": "YYYY-MM-DD", "end": "YYYY-MM-DD" }`. (FR1, FR2)
 
 **Given** an invalid range (`end < start`), a missing field, or an unknown person/job id
 **When** the request is submitted
@@ -228,17 +263,17 @@ So that I know the person is already booked. (FR3 observable, FR5 API; AD-2, AD-
 
 **Given** the person is already booked 3–7 Aug
 **When** a clashing assignment for that person is submitted directly to the API
-**Then** the API responds `HTTP 409 Conflict` with body `{ "code": "DOUBLE_BOOKING", "personId": <uuid>, "personName": <string>, "start": "YYYY-MM-DD", "end": "YYYY-MM-DD" }`
+**Then** the API responds `HTTP 409 Conflict` with body `{ "code": "DOUBLE_BOOKING", "personId": <uuid>, "personName": <string>, "start": "YYYY-MM-DD", "end": "YYYY-MM-DD" }`, where `start`/`end` are the **attempted** booking's dates from the request payload and `personName` is the name of the requested person
 **And** nothing is persisted. (AC4, FR5 API, AD-6)
 
 **Given** the person is booked 3–7 Aug
 **When** a booking that shares only the final day (7–10 Aug) is submitted to the API
 **Then** it is rejected with `409`
-**And** nothing is stored. (AC3 boundary at API level, FR3)
+**And** nothing is stored. (extra FR3 boundary coverage at API level — complements the via-UI AC3)
 
 **Given** a clash occurs
 **When** the service builds the rejection response
-**Then** the body is derived from the request payload plus the caught error only — no `SELECT` inside the aborted transaction (no `25P02`), no `500`
+**Then** `personName` is the name resolved during the pre-write id validation (Story 1.4), so the body needs **no query inside the aborted transaction** (avoiding `25P02`) and returns no `500`
 **And** the service performs no overlap check of its own; the constraint is the only source of the rule. (AD-2, AD-3)
 
 ### Story 1.6: Concurrency P0 — exactly-one-wins, pinned deterministically
@@ -250,14 +285,16 @@ So that "exactly one wins" is guaranteed, not accidentally serialized. (FR4, NFR
 **Acceptance Criteria:**
 
 **Given** the person has no assignment for 3–7 Aug
-**When** two clashing create transactions for that person over those dates are committed genuinely concurrently
+**When** two clashing create transactions for that person over those dates race
 **Then** exactly one persists
 **And** the other is rejected via the 409 contract. (AC1 P0, FR4, AD-1)
 
 **Given** the concurrency test
 **When** it is written
-**Then** it uses two separate connections/transactions (never one shared connection) against a fresh, isolated database
-**And** the race is genuinely exercised, not accidentally serialized. (AD-7, test isolation)
+**Then** the contended path is pinned deterministically, not left to timing: on two separate connections, **both transactions BEGIN and execute their `INSERT` before either COMMITs** (an explicit BEGIN / INSERT / barrier / COMMIT sequence), so the second `INSERT` blocks on the first's GiST exclusion lock
+**And** when the winner COMMITs, the loser's blocked statement fails with SQLSTATE `23P01` (the failure surfaces on the contended statement, not merely "at commit") — proving the concurrent path, never an accidentally-serialized one. (AD-7)
+
+_Rationale: two connections fired via `Promise.all` do not guarantee overlap — if the first commits before the second begins, the run is sequential and would still pass via the AC3 sequential guard. The explicit interleave above is the AD-7 pin._
 
 **Given** the P0 test
 **When** it is authored
@@ -279,7 +316,7 @@ So that I can staff people without double-booking them. (FR1 UI, FR5 UI — cove
 **Given** the person has no clashing assignment
 **When** a planner books them for a free date range through the UI
 **Then** the booking is stored
-**And** success is shown. (AC2, FR1, FR2)
+**And** a success outcome bound to a stable `data-testid` hook is shown (the same hook the winning planner asserts on in the two-context test). (AC2, FR1, FR2, AD-3)
 
 **Given** the person is already booked 3–7 Aug
 **When** a planner submits an overlapping booking via the UI — including one sharing only the final day (7–10 Aug)
