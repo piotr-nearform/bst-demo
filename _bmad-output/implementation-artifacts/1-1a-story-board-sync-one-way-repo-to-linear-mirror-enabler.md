@@ -5,7 +5,7 @@ baseline_commit: 4406657ed0bff79ac0bf8cf07146c36275986219
 # Story 1.1a: Story→board sync — one-way repo → Linear mirror (enabler)
 
 Status: review
-Linear: <!-- populated by first sync run; e.g. BST-12 -->
+Linear: BST-7
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
