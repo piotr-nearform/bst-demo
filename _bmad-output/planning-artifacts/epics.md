@@ -73,34 +73,60 @@ A planner can create person → job assignments over an inclusive date range thr
 
 **NFRs addressed:** NFR1 (concurrency correctness — P0 spine), NFR2–NFR5 (Azure/UK, secrets, ATDD, spec-as-contract — cross-cutting), NFR6 (small single-reviewer PR + two-way board link — enabler story), NFR7 (risk-based review gate — enabler story)
 
-**Story ordering (detailed in Step 3):** the two phase-zero enablers come first as ordered stories — story→board sync (one-way repo → Linear: each story create/update in version control is mirrored to its Linear ticket; NFR6) and the PR review gate (multi-model GitHub Agentic Workflows + named-human approval, NFR7) — because the pipeline is the deliverable and these must precede feature stories. Then the data-layer story (schema + EXCLUDE constraint, pulled into existence PRD-first), then the feature stories. Stories are ordered so each depends only on earlier ones (no forward dependencies) and each fits a single dev-agent context.
+**Story ordering (detailed in Step 3):** the two phase-zero enablers come first as ordered stories — story→board sync (one-way repo → Linear, reconcile-and-confirm: each story create/update in version control is mirrored to its Linear ticket, on demand or hooked to sprint planning, with a drift-preview + human confirm gate; NFR6) and the PR review gate (multi-model GitHub Agentic Workflows + named-human approval, NFR7) — because the pipeline is the deliverable and these must precede feature stories. Then the data-layer story (schema + EXCLUDE constraint, pulled into existence PRD-first), then the feature stories. Stories are ordered so each depends only on earlier ones (no forward dependencies) and each fits a single dev-agent context.
 
 ## Epic 1: Double-Booking Guard — human-owned, test-first delivery
 
 A planner can create person → job assignments over an inclusive date range through a minimal UI, and the system atomically refuses double-bookings for the same person — proven by a red-first P0 concurrency test — delivered through the AI-drafts / human-approves pipeline the spike exists to demonstrate.
 
-### Story 1.1: Story→board sync — repo story spec mirrored to Linear (one-way) (enabler)
+### Story 1.1: Story→board sync — repo story spec mirrored to Linear (one-way, reconcile-and-confirm) (enabler)
 
 As a delivery team,
-I want every create or update of a BMAD story in the repo to be reflected in its linked Linear ticket, one-directionally (repo → Linear),
-So that the board view always mirrors the canonical version-controlled story without a second source of truth or a parallel GitHub Issues copy. (NFR6)
+I want a one-way sync (repo → Linear) that mirrors each BMAD story spec to a linked Linear ticket — runnable on demand and wired into the sprint-planning job — which detects drift and reconciles with me before applying updates,
+So that the board always mirrors the canonical version-controlled stories, without a second source of truth and without silently overwriting tickets. (NFR6; agents-draft-humans-approve)
 
 **Acceptance Criteria:**
 
-**Given** a new BMAD story spec is created in the repo (e.g. the stories produced by this session)
-**When** the sync runs
-**Then** a linked Linear ticket is created reflecting the story
-**And** the linking identifier (Linear key) ties the ticket to the story spec.
+_Backfill / create:_
 
-**Given** an existing BMAD story spec is updated in the repo
-**When** the sync runs
-**Then** the linked Linear ticket is updated to match the repo story
-**And** the repo story spec remains the source of truth.
+**Given** the sync runs against a backlog that predates it (e.g. the 7 stories from this session, none yet on the board)
+**When** it runs for the first time
+**Then** it backfills — creating a linked Linear ticket for every story spec that has no ticket yet, including Story 1.1 itself.
 
-**Given** the sync direction
+_Idempotent upsert:_
+
+**Given** the sync has already run
+**When** it runs again with no repo changes
+**Then** it makes no changes — an idempotent upsert keyed by the linking id, never a duplicate ticket
+**And** a story whose spec changed has its ticket updated; an unchanged story is a no-op.
+
+_One-way direction + key lifecycle:_
+
+**Given** Linear mints the ticket key on creation
+**When** a ticket is created
+**Then** that key is the single identifier recorded against the story spec in the repo — a linking identifier, not content flowing back
+**And** changes made only in Linear are not authoritative and never flow back into the repo.
+
+_Invocation — on-demand + sprint-planning hook + manual bootstrap:_
+
+**Given** the team needs the board refreshed
+**When** they invoke the dedicated sync command/skill on demand, or the sprint-planning job completes
+**Then** the sync runs against the current repo backlog
+**And** the first run for this spike's backlog (including Story 1.1) is performed manually, since the sync does not yet exist when these stories are authored.
+
+_Drift detection + reconcile-and-confirm:_
+
+**Given** one or more linked tickets differ from their repo story spec
+**When** the sync runs
+**Then** it first reports which tickets are out of sync — classified as create / update / no-op — with a preview of what would change
+**And** it asks the user to confirm before applying, especially before a full ticket rewrite, writing nothing until confirmed (agents-draft-humans-approve).
+
+_Documented direction:_
+
+**Given** the sync direction and reconcile behaviour
 **When** documented in the ways-of-working
 **Then** it is stated as one-way (repo → Linear): the BMAD story spec in version control is canonical, Linear is a downstream mirror
-**And** changes made only in Linear are not authoritative and do not flow back into the repo.
+**And** the reconcile-and-confirm gate is recorded so re-runs are safe and human-owned.
 
 ### Story 1.2: PR review gate — multi-model review + named-human approval (enabler)
 
