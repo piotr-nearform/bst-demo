@@ -57,25 +57,30 @@ description: 'One-way repo → Linear mirror of BMAD story specs. Backfills the 
 
   <step n="2" goal="Source each story's content">
     <action>For each `story_key`, prefer the per-story file `_bmad-output/implementation-artifacts/<story_key>.md` if it exists (richest). Otherwise fall back to the `### Story X.Y` section of `_bmad-output/planning-artifacts/epics.md`.</action>
-    <action>Extract these fields from the source:
-      - **title** — from a per-story file: the H1 (`# …`) line, stripped of the leading `# `. From epics.md: the `### Story X.Y: …` heading text after the colon (or the full heading text if you keep the story number — be consistent across runs).
-      - **user_story_block** — the "As a … / I want … / So that …" paragraph.
-      - **acceptance_criteria** — the Acceptance Criteria section body (the Given/When/Then text, verbatim; a faithful mirror, do not paraphrase).</action>
-    <action>Compute the **canonical repo link**:
-      - if the per-story file exists: `https://github.com/piotr-nearform/bst-demo/blob/main/_bmad-output/implementation-artifacts/<story_key>.md`
-      - else: `https://github.com/piotr-nearform/bst-demo/blob/main/_bmad-output/planning-artifacts/epics.md` (anchor to the story heading where practical).</action>
+    <action>If a `story_key` resolves to NEITHER a per-story file NOR an `### Story X.Y` section → **SKIP it** and record it in the Step-9 report as "unsourceable". Never create an empty-body ticket.</action>
+    <action>Extract these fields from the source. Boundaries are FIXED (an under-specified boundary changes the hash between runs — see Step 3):
+      - **title** — the heading text with its leading marker stripped, **including the `Story X.Y:` prefix**, verbatim. Per-story file: the H1 `# …` line minus `# `. From epics.md: the `### Story X.Y: …` line minus `### `. Both yield the identical form `Story X.Y: …` — do NOT drop the number, and do NOT offer a choice. (Note: when a story first gains a per-story file its title/AC formatting may differ from the epics.md form; that one-off hash change is expected — see Step 5.)
+      - **user_story_block** — ONLY the contiguous `As a … / I want … / So that …` lines. STOP at the first blank line after "So that". EXCLUDE any following italic notes (`_Depends on: …_`, `_Depended on by: …_`, `_Dev note: …_`) — they are not part of the block.
+      - **acceptance_criteria** — from the `**Acceptance Criteria:**` marker (epics.md) or the `## Acceptance Criteria` heading (per-story file) up to the next `###`/`##` heading, or EOF if none (e.g. story 1.7's AC runs to end of file). Take the body verbatim; do NOT paraphrase.</action>
+    <action>Bind **repo_relative_path** and **repo_link**:
+      - per-story file exists: path = `_bmad-output/implementation-artifacts/<story_key>.md`
+      - else: path = `_bmad-output/planning-artifacts/epics.md`
+      - repo_link = `https://github.com/piotr-nearform/bst-demo/blob/main/<repo_relative_path>` (anchor to the story heading where practical). Both `{repo_relative_path}` and `{repo_link}` fill the Step-6 template.</action>
   </step>
 
   <step n="3" goal="Compute a deterministic content hash">
-    <critical>Compute the hash with a real tool (sha256), NOT by eyeballing. This is what makes re-runs deterministic.</critical>
-    <action>Build the hash input as the concatenation, in this fixed order, separated by a single newline: `title` + `user_story_block` + `acceptance_criteria`. (Do NOT include the marker lines, the repo link, or the `Linear:` key — those are either constant or self-referential.)</action>
-    <action>Canonicalize the hash input deterministically: strip trailing whitespace on every line, collapse runs of 2+ blank lines to a single blank line, and strip leading/trailing blank lines from the whole string.</action>
-    <action>Compute `hash = sha256(canonicalized_input)` as lowercase hex using a tool, e.g. write the canonicalized input to a scratch file and run `sha256sum`, or `python3 -c "import hashlib,sys;print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())"`. Use the full 64-char hex digest. The same source must always yield the same hash.</action>
+    <critical>The hash MUST be over bytes extracted directly from the source file by a tool — NEVER over text you retyped or "faithfully reproduced". The specs are dense with `—`, `→`, `≥`, and smart quotes; an LLM re-typing them silently normalizes characters, changing the sha256 and turning a genuine NO-OP into a spurious UPDATE. Slice, do not transcribe.</critical>
+    <action>Extract each field as a byte range from the source with a tool (`sed -n`/`awk`/`python`), applying the FIXED boundaries from Step 2. Do not read the field into your reasoning and retype it.</action>
+    <action>Build the hash input as the concatenation, in this fixed order, separated by a single newline: `title` + `user_story_block` + `acceptance_criteria`. (Do NOT include the marker lines, the repo link/path, or the `Linear:` key — those are either constant or self-referential.)</action>
+    <action>Canonicalize deterministically: strip trailing whitespace on every line, collapse runs of 2+ blank lines to a single blank line, strip leading/trailing blank lines from the whole string.</action>
+    <action>Compute `hash = sha256(canonicalized_input)` as lowercase hex with a tool (pipe the extracted bytes straight to `sha256sum`, or `python3 -c "import hashlib,sys;print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())"`). Use the full 64-char digest. The same source bytes must always yield the same hash.</action>
   </step>
 
   <step n="4" goal="Match existing tickets by marker">
-    <action>Call `mcp__claude_ai_Linear__list_issues` for project `BST Spike` (id `504c2cf9-d132-4ec4-a183-b74c5f73eddd`). Page through all results.</action>
-    <action>For each returned ticket, read its description and look for `<!-- bmad-story-id: <value> -->`. Build a map `story_key → { issueId, storedHash }`, reading `storedHash` from that ticket's `<!-- bmad-content-hash: … -->` marker (use `get_issue` if the list payload does not include the full description).</action>
+    <critical>Marker matching is the ONLY defence against duplicate tickets (Linear has no marker uniqueness constraint). If you stop paging early, you miss a match and CREATE a duplicate. Enumerate exhaustively.</critical>
+    <action>Call `mcp__claude_ai_Linear__list_issues` for project `BST Spike` (id `504c2cf9-d132-4ec4-a183-b74c5f73eddd`). LOOP: follow the returned cursor and keep fetching until the response reports no next page. Do not assume one call returns everything.</action>
+    <action>For each returned ticket, read its description and look for `<!-- bmad-story-id: <value> -->`. Build a map `story_key → { issueId, storedHash }`, reading `storedHash` from that ticket's `<!-- bmad-content-hash: … -->` marker (use `get_issue` if the list payload truncates the description before the markers).</action>
+    <action>**Duplicate-marker guard:** if two or more tickets carry the SAME `bmad-story-id`, do NOT silently keep the last one — record all offending ids and surface it as an ERROR in the Step-5 plan table; do not UPDATE/CREATE that story until a human resolves it (reconcile is 1.1b's job).</action>
     <action>Tickets with no `bmad-story-id` marker (including legacy `BST-5`/`BST-6`) are ignored entirely.</action>
   </step>
 
@@ -83,8 +88,10 @@ description: 'One-way repo → Linear mirror of BMAD story specs. Backfills the 
     <action>For each `story_key` in the enumerated set, classify:
       - **no marker match in the map** → CREATE
       - **marker match AND storedHash == computed hash** → NO-OP (zero writes)
-      - **marker match AND storedHash != computed hash** → UPDATE (same ticket id)</action>
-    <action>Render a short plan table (story_key → CREATE/UPDATE/NO-OP) before writing, so the run is auditable.</action>
+      - **marker match AND storedHash != computed hash** → UPDATE (same ticket id)
+      - **duplicate marker (Step 4 guard)** → ERROR (skip writes, needs human/1.1b reconcile)
+      - **unsourceable (Step 2 skip)** → SKIP (report only)</action>
+    <action>Render a short plan table (story_key → CREATE/UPDATE/NO-OP/ERROR/SKIP) before writing, so the run is auditable. When a story that previously sourced from epics.md now has its first per-story file, expect a one-off UPDATE from the format shift — this is not real content drift; note it as such in the table so it is not mistaken for a lost/edited spec.</action>
   </step>
 
   <step n="6" goal="Build the ticket body">
@@ -110,7 +117,7 @@ One-way mirror of the BMAD story spec. The repo is canonical; edits made here ar
 
   <step n="7" goal="Apply — create or update (Linear writes)">
     <critical>Do exactly one write per CREATE and per UPDATE. Do ZERO writes for NO-OP stories. Never create a second ticket for a story that already has a marker match.</critical>
-    <action>For CREATE: call `mcp__claude_ai_Linear__save_issue` with NO `id`, `team` = `BST` (id `2b81e3e8-53d4-4c8f-8b78-6280d1dfb0a7`), `project` = `BST Spike` (id `504c2cf9-d132-4ec4-a183-b74c5f73eddd`), the title, and the description from Step 6. Capture the minted key (e.g. `BST-12`) from the response.</action>
+    <action>For CREATE: as a last-line duplicate guard, re-query the specific `bmad-story-id` marker immediately before writing; if a ticket now exists, treat as UPDATE/NO-OP instead of creating. Then call `mcp__claude_ai_Linear__save_issue` with NO `id`, `team` = `BST` (pass the UUID `2b81e3e8-53d4-4c8f-8b78-6280d1dfb0a7` as the value, not the display name), `project` = `BST Spike` (pass the UUID `504c2cf9-d132-4ec4-a183-b74c5f73eddd`), the title, and the description from Step 6. Capture the minted key (e.g. `BST-12`) from the response.</action>
     <action>For UPDATE: call `mcp__claude_ai_Linear__save_issue` WITH the existing `id`, and the new title + description (which carries the new hash). Same ticket, never a new one.</action>
     <action>For NO-OP: do nothing.</action>
   </step>
