@@ -58,6 +58,35 @@ The PRD references only the *outcome* of this gate (a review trail + a named app
 
 ---
 
+## Iterating the PRD — the change cycle (after the first pass)
+
+The choreography above runs **once** to stand the product up. After that the product evolves by **iterating the PRD**, not rebuilding it. This is where the real risk lives: BMAD has **no native guard** against a moving PRD silently orphaning already-built work (research 2026-07-06 — confirmed open BMAD issues [#1930] `correct-course` rewrites the AC of already-merged stories, [#1638] epic/story decomposition is strictly one-way with no feedback path, [#446] stories go stale with no detection). So we impose the discipline below. It is the append-an-epic / living-PRD model BMAD recommends, hardened with three conventions every serious spec-driven framework converges on (append-only requirement IDs, deltas-not-edits, immutable shipped work).
+
+**The cycle is two PRs, never collapsed into one:**
+
+**PR-A — Planning change** (`bmad-prd` update → `bmad-create-epics-and-stories`). Touches `prd.md` + `epics.md` only; **no application code**. New scope enters as `planned` FRs (a legitimate backlog line, not a defect — this is "outstanding"). `bmad-create-epics-and-stories` regenerates the FR Coverage Map so nothing is left uncovered by accident.
+
+- **Gates on PR-A** (all planning-file checks — there is no code here, so "spec+code together" does *not* apply):
+  1. **Coverage complete** — every `FRn` in `prd.md` appears in the coverage map in `epics.md` (i.e. epics were regenerated, not left stale). Checked with **`bmad-check-implementation-readiness`** — an **LLM-judgement step in our process, not a hard GitHub status check** (it has no deterministic pass/fail). A note in this doc + a reviewer eyeball, not CI.
+  2. **FR IDs append-only** — diff check on `prd.md`: an existing FR's text changed ⇒ fail, unless it's a new `FR<n+1>` or the old ID is marked `[DEPRECATED]` (constitution rule 6). Mechanical; could be trivial CI later, a process step for now.
+  3. **No frozen story touched** — no story that is `in-progress`/`done` in `sprint-status.yaml` has its AC modified in this diff (the [#1930] guard; constitution rule 7). Mechanical; process step for now.
+
+**Ticket creation happens on merge of PR-A, and is manual by design.** The TL runs **`sync-stories-to-linear`** (Story 1.1a skill) to mirror the new `planned` stories to Linear. We deliberately do **not** auto-run this from a GitHub Agentic Workflow on merge: (a) it would bypass the **reconcile-and-confirm human gate** we built into Story 1.1b (agents-draft-humans-approve — the board is never written silently), and (b) an on-merge Action is post-merge and non-interactive, so the "do we decompose these now or not?" decision has nowhere to live — a manual invocation *is* that decision point. A path-filtered Action that merely **comments "PRD changed — run `sync-stories-to-linear`"** is an acceptable nudge; anything that writes the board is not.
+
+**PR-B — Implementation** (`bmad-create-story` → ATDD → `bmad-dev-story` → review). This is the existing **dev-cycle** row. `bmad-create-story` runs **just-in-time** — when a dev picks the story up and moves it to `in-progress`, *not* at PR-A time. Touches code + the story file; gate is "spec+code together" (story file in the diff) flowing through the review gate above.
+
+**The freeze line — one boundary, three things at once.** An AC is editable only while the story is `backlog`. At move-to-`in-progress`, `bmad-create-story` writes the full file, the red ATDD tests are authored from the AC, **and the AC freezes** (constitution rule 7). This single transition is why "which deltas are done vs outstanding" stays answerable: `planned` FR = outstanding, `in-progress`/`done` FR = frozen and traceable to a story + tests.
+
+**Ownership of the iteration cycle:**
+
+| Step | Model | Accepts (gate) | Also reviews |
+|---|---|---|---|
+| **PR-A — PRD iteration** (`bmad-prd` update → `bmad-create-epics-and-stories`) | **Collaborative** | **KPMG PO** _(same gate as the PRD row)_ | Simon (KPMG Tech Lead) |
+| **Ticket sync** (`sync-stories-to-linear`, on PR-A merge) | solo | **Nearform TL** _(runs + confirms the reconcile gate)_ | — |
+| **PR-B — per-story implementation** | solo | Nearform peer review _(the review gate above)_ | — |
+
+---
+
 ## Caveat to carry into the real engagement
 
 Collaborative mode needs the KPMG PO's **synchronous time**. Senior client stakeholders often won't give live hours, which may force PRD / stories into **draft-then-review** even though collaborative is better for ownership. Rule: **collaborative if the PO can sit with us; fall back to draft-then-review if not.** (In the spike this is free — the TL plays both hats.)
@@ -73,4 +102,5 @@ Fill in what *actually* happened at each stage — where the PO really needed to
   - **"Agents draft, humans approve" fell out *structurally*, not just as a rule.** The agent literally could not open the PR — `gh` was authed as read-only accounts; a write-capable human identity (`piotr-nearform`) was required. Lesson for the real engagement: provision a write-scoped token/identity for the agent, and keep the agent's PR-opening identity **distinct** from the human who approves/merges, so the approval gate stays a genuine separation rather than one identity rubber-stamping itself.
   - **PRD-first held.** No scaffold yet; the first story pulls React/Node/DB into existence. Q3 (UI in scope) means that first story also scaffolds a front end.
   - **Hypothesis mostly right, one part untested.** Collaborative mode was cheap here only because one person wore both hats; the caveat below (it needs the PO's synchronous time) stays unproven until a real KPMG PO is in the loop.
+- **Iteration process — instance #3 (2026-07-06).** Before running any PRD change, worked out *how* we iterate the PRD without orphaning built work — the stakeholder question "how does the agent know which PRD deltas are done vs outstanding, and how do we not silently override old functionality?". Ran deep research across BMAD's repo/issues + adjacent spec-driven frameworks (OpenSpec, ReqToCode, Kiro, Spec Growth Engine): **BMAD has no native answer** — decomposition is one-way ([#1638]), `correct-course` can rewrite merged stories' AC ([#1930]), stories go stale undetected ([#446]). Corrected an earlier wrong belief that `bmad-testarch-trace` guards this (it's *test*-coverage traceability, not change-preservation — refuted in the research). Added the two-PR change cycle + three PR-A gates + the freeze line above, and encoded the two load-bearing rules (append-only FR IDs, AC-frozen-at-`in-progress`) into `project-context.md` (rules 6, 7). Ticket creation stays **manual** (`sync-stories-to-linear`) on purpose — auto-on-merge would bypass Story 1.1b's reconcile-and-confirm gate. Lesson: the iteration guardrails are *our* convention layered on BMAD, not something BMAD gives us; the freeze line (`backlog` → `in-progress`) is the single boundary that makes done-vs-outstanding answerable.
 - **Sequencing — instance #2 (2026-07-02).** Caught before running epics: the draft choreography had **Epics & stories before Architecture**, but BMAD (`bmad-create-epics-and-stories` is `preceded-by: bmad-architecture`) and dependency reality put **Architecture first** — the guard story can't be written cleanly until the concurrency mechanism the PRD deferred is decided. Corrected the table order. Lesson: trust the BMAD phase ordering over a hand-drawn choreography unless there's a concrete reason to diverge; a home-grown sequence is easy to get subtly wrong. Also surfaced the **UX/design step** (`bmad-ux`) as the ingestion point for Antoine's designs — added to the table and Notes.
